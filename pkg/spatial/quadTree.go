@@ -1,5 +1,7 @@
 package main
 
+import "sync"
+
 type Point struct {
 	X, Y float64
 	Data interface{}
@@ -16,6 +18,11 @@ type Node struct {
 	Points   []Point
 	Capacity int
 	Children [4]*Node
+}
+
+type QuadTree struct {
+	Root *Node
+	Lock sync.RWMutex
 }
 
 func (b Bounds) Intersects(other Bounds) bool {
@@ -70,6 +77,7 @@ func (n *Node) SubDivide() {
 
 }
 
+//Internal Function
 func (n *Node) InsertNode(point Point) bool {
 	if n.Bounds.Contains(point) == false {
 		return false
@@ -88,7 +96,8 @@ func (n *Node) InsertNode(point Point) bool {
 	return false
 }
 
-func (n *Node) Search(searchArea Bounds, resultPoints *[]Point) {
+//Internal Function
+func (n *Node) SearchTree(searchArea Bounds, resultPoints *[]Point) {
 	if n.Bounds.Intersects(searchArea) == false {
 		return
 	}
@@ -101,7 +110,30 @@ func (n *Node) Search(searchArea Bounds, resultPoints *[]Point) {
 
 	} else {
 		for i := 0; i < 4; i++ {
-			n.Children[i].Search(searchArea, resultPoints)
+			n.Children[i].SearchTree(searchArea, resultPoints)
 		}
 	}
+}
+
+func (qt *QuadTree) Insert(point Point) bool {
+	/*
+		Public Accessible API for Inserting New Points into the QuadTree,
+		(Much Less Contention in Comparison to the Read Operations)
+	*/
+	qt.Lock.Lock()
+	defer qt.Lock.Unlock()
+	res := qt.Root.InsertNode(point)
+	return res
+
+}
+
+func (qt *QuadTree) Search(area Bounds) []Point {
+	/*
+		Public Accessible API to search within the QuadTree
+	*/
+	qt.Lock.RLock()
+	defer qt.Lock.RUnlock()
+	results := make([]Point, 0)
+	qt.Root.SearchTree(area, &results)
+	return results
 }
