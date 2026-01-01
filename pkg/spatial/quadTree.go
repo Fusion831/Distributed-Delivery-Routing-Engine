@@ -107,19 +107,19 @@ func (n *Node) InsertNode(point Point) bool {
 
 //Internal Function
 func (n *Node) SearchTree(searchArea Bounds, resultPoints *[]Point) {
-	if n.Bounds.Intersects(searchArea) == false {
+
+	if n == nil || !n.Bounds.Intersects(searchArea) {
 		return
 	}
-	if n.Points != nil {
-		for _, p := range n.Points {
-			if searchArea.Contains(p) {
-				*resultPoints = append(*resultPoints, p)
-			}
-		}
-
-	} else {
+	if n.Children[0] != nil {
 		for i := 0; i < 4; i++ {
 			n.Children[i].SearchTree(searchArea, resultPoints)
+		}
+		return
+	}
+	for _, p := range n.Points {
+		if searchArea.Contains(p) {
+			*resultPoints = append(*resultPoints, p)
 		}
 	}
 }
