@@ -18,27 +18,20 @@ type Node struct {
 	Children [4]*Node
 }
 
+func (b Bounds) Intersects(other Bounds) bool {
+	/*
+		Check if the two boxes touch or are separate, returns true if they touch, and false if they are separate,
+		by doing an invariant
+	*/
+	return !(b.X > other.X+other.Width ||
+		b.X+b.Width < other.X ||
+		b.Y > other.Y+other.Height ||
+		b.Y+b.Height < other.Y)
+}
+
 func (b Bounds) Contains(point Point) bool {
 	return point.X >= b.X && point.X <= b.X+b.Width &&
 		point.Y <= b.Y+b.Height && point.Y >= b.Y
-}
-
-func (n *Node) InsertNode(point Point) bool {
-	if n.Bounds.Contains(point) == false {
-		return false
-	}
-	if len(n.Points) < n.Capacity && n.Children[0] == nil {
-		n.Points = append(n.Points, point)
-	}
-	if n.Children[0] == nil {
-		n.SubDivide() //TODO: Implement this function, to subdivide th node into 4 children, and move the data
-	}
-	for i := 0; i < 4; i++ {
-		if n.Children[i].InsertNode(point) {
-			return true
-		}
-	}
-	return false
 }
 
 func (n *Node) SubDivide() {
@@ -75,4 +68,40 @@ func (n *Node) SubDivide() {
 	}
 	n.Points = nil
 
+}
+
+func (n *Node) InsertNode(point Point) bool {
+	if n.Bounds.Contains(point) == false {
+		return false
+	}
+	if len(n.Points) < n.Capacity && n.Children[0] == nil {
+		n.Points = append(n.Points, point)
+	}
+	if n.Children[0] == nil {
+		n.SubDivide()
+	}
+	for i := 0; i < 4; i++ {
+		if n.Children[i].InsertNode(point) {
+			return true
+		}
+	}
+	return false
+}
+
+func (n *Node) Search(searchArea Bounds, resultPoints *[]Point) {
+	if n.Bounds.Intersects(searchArea) == false {
+		return
+	}
+	if n.Points != nil {
+		for _, p := range n.Points {
+			if searchArea.Contains(p) {
+				*resultPoints = append(*resultPoints, p)
+			}
+		}
+
+	} else {
+		for i := 0; i < 4; i++ {
+			n.Children[i].Search(searchArea, resultPoints)
+		}
+	}
 }
