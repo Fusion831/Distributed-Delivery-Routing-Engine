@@ -1,6 +1,9 @@
 package spatial
 
-import "sync"
+import (
+	"math"
+	"sync"
+)
 
 type Point struct {
 	X, Y float64
@@ -23,6 +26,12 @@ type Node struct {
 type QuadTree struct {
 	Root *Node
 	Lock sync.RWMutex
+}
+
+// PointWithDistance is a helper struct for sorting points by distance
+type PointWithDistance struct {
+	Point    Point
+	Distance float64
 }
 
 func (b Bounds) Intersects(other Bounds) bool {
@@ -77,7 +86,7 @@ func (n *Node) SubDivide() {
 
 }
 
-//Internal Function for Inserting a Node
+// Internal Function for Inserting a Node
 func (n *Node) InsertNode(point Point) bool {
 	if n.Bounds.Contains(point) == false {
 		return false
@@ -105,7 +114,7 @@ func (n *Node) InsertNode(point Point) bool {
 	return false
 }
 
-//Internal Function for Searching within the Tree
+// Internal Function for Searching within the Tree
 func (n *Node) SearchTree(searchArea Bounds, resultPoints *[]Point) {
 
 	if n == nil || !n.Bounds.Intersects(searchArea) {
@@ -192,4 +201,98 @@ func (qt *QuadTree) Search(area Bounds) []Point {
 	results := make([]Point, 0)
 	qt.Root.SearchTree(area, &results)
 	return results
+}
+
+func Distance(p1, p2 Point) float64 {
+	dx := p2.X - p1.X
+	dy := p2.Y - p1.Y
+	return math.Sqrt(dx*dx + dy*dy)
+}
+
+func sortByDistance(points []PointWithDistance) {
+	for i := 1; i < len(points); i++ {
+		key := points[i]
+		j := i - 1
+
+		for j >= 0 && points[j].Distance > key.Distance {
+			points[j+1] = points[j]
+			j--
+		}
+		points[j+1] = key
+	}
+}
+
+func (qt *QuadTree) KNearest(target Point, k int) []Point {
+	if k <= 0 {
+		return make([]Point, 0)
+	}
+
+	qt.Lock.RLock()
+	defer qt.Lock.RUnlock()
+
+	if qt.Root == nil {
+		return make([]Point, 0)
+	}
+
+	maxPoints := k * 10
+	if maxPoints > 100000 {
+		maxPoints = 100000
+	}
+
+	// Start with initial search radius
+	initialRadius := 10.0
+	searchRadius := initialRadius
+	maxRadius := math.Max(qt.Root.Bounds.Width, qt.Root.Bounds.Height) * 2
+	var results []Point
+
+	for searchRadius <= maxRadius {
+
+		searchBounds := Bounds{
+			X:      target.X - searchRadius,
+			Y:      target.Y - searchRadius,
+			Width:  searchRadius * 2,
+			Height: searchRadius * 2,
+		}
+
+		results = make([]Point, 0)
+		qt.Root.SearchTree(searchBounds, &results)
+
+		if len(results) >= k {
+			break
+		}
+
+		if searchRadius >= maxRadius {
+			break
+		}
+		if len(results) > maxPoints {
+			break
+		}
+
+		searchRadius *= 2
+	}
+
+	if len(results) == 0 {
+		return make([]Point, 0)
+	}
+
+	pointsWithDist := make([]PointWithDistance, len(results))
+	for i, p := range results {
+		pointsWithDist[i] = PointWithDistance{
+			Point:    p,
+			Distance: Distance(target, p),
+		}
+	}
+
+	sortByDistance(pointsWithDist)
+
+	if len(pointsWithDist) > k {
+		pointsWithDist = pointsWithDist[:k]
+	}
+
+	finalResults := make([]Point, len(pointsWithDist))
+	for i, pd := range pointsWithDist {
+		finalResults[i] = pd.Point
+	}
+
+	return finalResults
 }

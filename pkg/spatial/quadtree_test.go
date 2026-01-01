@@ -1301,3 +1301,487 @@ func TestBoundaryFloatOperations(t *testing.T) {
 	_ = bounds.Contains(point)
 	_ = bounds.Intersects(Bounds{X: 0, Y: 0, Width: 100, Height: 100})
 }
+
+// TestDistanceCalculation tests the distance helper function
+func TestDistanceCalculation(t *testing.T) {
+	tests := []struct {
+		name     string
+		p1       Point
+		p2       Point
+		expected float64
+	}{
+		{
+			name:     "same point",
+			p1:       Point{X: 0, Y: 0, Data: nil},
+			p2:       Point{X: 0, Y: 0, Data: nil},
+			expected: 0,
+		},
+		{
+			name:     "3-4-5 triangle",
+			p1:       Point{X: 0, Y: 0, Data: nil},
+			p2:       Point{X: 3, Y: 4, Data: nil},
+			expected: 5,
+		},
+		{
+			name:     "unit distance",
+			p1:       Point{X: 0, Y: 0, Data: nil},
+			p2:       Point{X: 1, Y: 0, Data: nil},
+			expected: 1,
+		},
+		{
+			name:     "negative coordinates",
+			p1:       Point{X: -1, Y: -1, Data: nil},
+			p2:       Point{X: 1, Y: 1, Data: nil},
+			expected: math.Sqrt(8), // sqrt((1-(-1))^2 + (1-(-1))^2) = sqrt(8)
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Distance(tt.p1, tt.p2)
+			if math.Abs(result-tt.expected) > 1e-9 {
+				t.Errorf("Distance() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestDistanceSymmetry tests that Distance is symmetric
+func TestDistanceSymmetry(t *testing.T) {
+	p1 := Point{X: 10, Y: 20, Data: nil}
+	p2 := Point{X: 30, Y: 40, Data: nil}
+
+	d1 := Distance(p1, p2)
+	d2 := Distance(p2, p1)
+
+	if math.Abs(d1-d2) > 1e-9 {
+		t.Errorf("Distance should be symmetric: d(p1,p2)=%v, d(p2,p1)=%v", d1, d2)
+	}
+}
+
+// TestKNearestBasic tests basic k-nearest neighbor search
+func TestKNearestBasic(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	// Insert points in a grid
+	points := []Point{
+		{X: 10, Y: 10, Data: "p1"},
+		{X: 20, Y: 20, Data: "p2"},
+		{X: 30, Y: 30, Data: "p3"},
+		{X: 40, Y: 40, Data: "p4"},
+		{X: 50, Y: 50, Data: "p5"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Find 3 nearest to (15, 15)
+	target := Point{X: 15, Y: 15, Data: nil}
+	result := qt.KNearest(target, 3)
+
+	if len(result) != 3 {
+		t.Errorf("Expected 3 results, got %d", len(result))
+	}
+
+	// Verify they're sorted by distance
+	for i := 0; i < len(result)-1; i++ {
+		d1 := Distance(target, result[i])
+		d2 := Distance(target, result[i+1])
+		if d1 > d2 {
+			t.Errorf("Results not sorted by distance: d[%d]=%v > d[%d]=%v", i, d1, i+1, d2)
+		}
+	}
+}
+
+// TestKNearestZeroK tests with k=0
+func TestKNearestZeroK(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	qt.Insert(Point{X: 50, Y: 50, Data: "test"})
+
+	result := qt.KNearest(Point{X: 50, Y: 50, Data: nil}, 0)
+
+	if len(result) != 0 {
+		t.Errorf("Expected 0 results for k=0, got %d", len(result))
+	}
+}
+
+// TestKNearestNegativeK tests with negative k
+func TestKNearestNegativeK(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	qt.Insert(Point{X: 50, Y: 50, Data: "test"})
+
+	result := qt.KNearest(Point{X: 50, Y: 50, Data: nil}, -5)
+
+	if len(result) != 0 {
+		t.Errorf("Expected 0 results for negative k, got %d", len(result))
+	}
+}
+
+// TestKNearestEmptyTree tests k-nearest on empty tree
+func TestKNearestEmptyTree(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	result := qt.KNearest(Point{X: 50, Y: 50, Data: nil}, 10)
+
+	if len(result) != 0 {
+		t.Errorf("Expected 0 results from empty tree, got %d", len(result))
+	}
+}
+
+// TestKNearestMoreThanAvailable tests when k > available points
+func TestKNearestMoreThanAvailable(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	points := []Point{
+		{X: 10, Y: 10, Data: "p1"},
+		{X: 20, Y: 20, Data: "p2"},
+		{X: 30, Y: 30, Data: "p3"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Request 10 nearest, but only 3 exist
+	result := qt.KNearest(Point{X: 15, Y: 15, Data: nil}, 10)
+
+	if len(result) != 3 {
+		t.Errorf("Expected 3 results (all available), got %d", len(result))
+	}
+}
+
+// TestKNearestExactDistance tests points at exact distances
+func TestKNearestExactDistance(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 200, Height: 200},
+			Capacity: 4,
+		},
+	}
+
+	// Insert points at known distances from origin
+	// Distance 5: (3, 4)
+	// Distance 5: (4, 3)
+	// Distance 10: (6, 8)
+	qt.Insert(Point{X: 3, Y: 4, Data: "d5_a"})
+	qt.Insert(Point{X: 4, Y: 3, Data: "d5_b"})
+	qt.Insert(Point{X: 6, Y: 8, Data: "d10"})
+
+	target := Point{X: 0, Y: 0, Data: nil}
+	result := qt.KNearest(target, 2)
+
+	if len(result) != 2 {
+		t.Fatalf("Expected 2 results, got %d", len(result))
+	}
+
+	// Both should be at distance 5
+	for i, p := range result {
+		dist := Distance(target, p)
+		if math.Abs(dist-5) > 1e-9 {
+			t.Errorf("Result %d should be at distance 5, got %v", i, dist)
+		}
+	}
+}
+
+// TestKNearestTargetInsideTree tests k-nearest when target is in the tree
+func TestKNearestTargetInsideTree(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	// Insert the target itself plus neighbors
+	target := Point{X: 50, Y: 50, Data: "target"}
+	qt.Insert(target)
+	qt.Insert(Point{X: 51, Y: 50, Data: "neighbor1"})
+	qt.Insert(Point{X: 50, Y: 51, Data: "neighbor2"})
+	qt.Insert(Point{X: 10, Y: 10, Data: "far"})
+
+	result := qt.KNearest(target, 2)
+
+	if len(result) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(result))
+	}
+
+	// First result should be target itself (distance 0)
+	if Distance(target, result[0]) > 1e-9 {
+		t.Error("Nearest point should be the target itself")
+	}
+}
+
+// TestKNearestAfterSubdivision tests k-nearest after tree subdivision
+func TestKNearestAfterSubdivision(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 2,
+		},
+	}
+
+	// Insert enough points to trigger subdivision
+	points := []Point{
+		{X: 10, Y: 10, Data: "p1"},
+		{X: 20, Y: 20, Data: "p2"},
+		{X: 30, Y: 30, Data: "p3"},
+		{X: 40, Y: 40, Data: "p4"},
+		{X: 50, Y: 50, Data: "p5"},
+		{X: 60, Y: 60, Data: "p6"},
+		{X: 70, Y: 70, Data: "p7"},
+		{X: 80, Y: 80, Data: "p8"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Verify tree is subdivided
+	if qt.Root.Children[0] == nil {
+		t.Fatal("Tree should be subdivided")
+	}
+
+	// Find k nearest from middle of tree
+	target := Point{X: 45, Y: 45, Data: nil}
+	result := qt.KNearest(target, 3)
+
+	if len(result) != 3 {
+		t.Errorf("Expected 3 results, got %d", len(result))
+	}
+
+	// Verify ordering by distance
+	for i := 0; i < len(result)-1; i++ {
+		d1 := Distance(target, result[i])
+		d2 := Distance(target, result[i+1])
+		if d1 > d2 {
+			t.Errorf("Results not sorted: d[%d]=%v > d[%d]=%v", i, d1, i+1, d2)
+		}
+	}
+}
+
+// TestKNearestNegativeCoordinates tests k-nearest with negative coordinates
+func TestKNearestNegativeCoordinates(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: -100, Y: -100, Width: 200, Height: 200},
+			Capacity: 4,
+		},
+	}
+
+	points := []Point{
+		{X: -50, Y: -50, Data: "p1"},
+		{X: 0, Y: 0, Data: "p2"},
+		{X: 50, Y: 50, Data: "p3"},
+		{X: -25, Y: 25, Data: "p4"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	target := Point{X: 0, Y: 0, Data: nil}
+	result := qt.KNearest(target, 2)
+
+	if len(result) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(result))
+	}
+
+	// Verify sorted by distance
+	for i := 0; i < len(result)-1; i++ {
+		d1 := Distance(target, result[i])
+		d2 := Distance(target, result[i+1])
+		if d1 > d2 {
+			t.Errorf("Not sorted by distance")
+		}
+	}
+}
+
+// TestKNearestLargeDataset tests k-nearest on larger dataset
+func TestKNearestLargeDataset(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 1000, Height: 1000},
+			Capacity: 10,
+		},
+	}
+
+	// Insert 100 random-ish points
+	for i := 0; i < 100; i++ {
+		x := float64(i%10) * 100
+		y := float64((i/10)%10) * 100
+		qt.Insert(Point{X: x, Y: y, Data: fmt.Sprintf("p%d", i)})
+	}
+
+	target := Point{X: 450, Y: 450, Data: nil}
+	k := 10
+	result := qt.KNearest(target, k)
+
+	if len(result) != k {
+		t.Errorf("Expected %d results, got %d", k, len(result))
+	}
+
+	// Verify all results are sorted by distance
+	for i := 0; i < len(result)-1; i++ {
+		d1 := Distance(target, result[i])
+		d2 := Distance(target, result[i+1])
+		if d1 > d2+1e-9 { // Allow small floating point error
+			t.Errorf("Not sorted at index %d: d[%d]=%v > d[%d]=%v", i, i, d1, i+1, d2)
+		}
+	}
+}
+
+// TestKNearestConsistency tests that KNearest returns consistent results
+func TestKNearestConsistency(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	points := []Point{
+		{X: 10, Y: 10, Data: "p1"},
+		{X: 20, Y: 20, Data: "p2"},
+		{X: 30, Y: 30, Data: "p3"},
+		{X: 40, Y: 40, Data: "p4"},
+		{X: 50, Y: 50, Data: "p5"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	target := Point{X: 25, Y: 25, Data: nil}
+
+	// Call KNearest multiple times
+	result1 := qt.KNearest(target, 3)
+	result2 := qt.KNearest(target, 3)
+
+	if len(result1) != len(result2) {
+		t.Errorf("Inconsistent results: first call %d, second call %d", len(result1), len(result2))
+	}
+
+	// Results should be the same (same order)
+	for i := range result1 {
+		if result1[i].X != result2[i].X || result1[i].Y != result2[i].Y {
+			t.Error("KNearest returned different results on identical calls")
+		}
+	}
+}
+
+// TestKNearestConcurrent tests concurrent k-nearest queries
+func TestKNearestConcurrent(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 1000, Height: 1000},
+			Capacity: 10,
+		},
+	}
+
+	// Pre-populate tree
+	for i := 0; i < 200; i++ {
+		x := float64(i%20) * 50
+		y := float64((i/20)%10) * 100
+		qt.Insert(Point{X: x, Y: y, Data: fmt.Sprintf("p%d", i)})
+	}
+
+	var wg sync.WaitGroup
+	numGoroutines := 10
+
+	for g := 0; g < numGoroutines; g++ {
+		wg.Add(1)
+		go func(goroutineID int) {
+			defer wg.Done()
+			for i := 0; i < 20; i++ {
+				targetX := float64(goroutineID * 100)
+				targetY := float64(i * 50)
+				target := Point{X: targetX, Y: targetY, Data: nil}
+				results := qt.KNearest(target, 5)
+
+				if len(results) > 5 {
+					t.Errorf("KNearest returned more than k results")
+				}
+			}
+		}(g)
+	}
+
+	wg.Wait()
+}
+
+// BenchmarkKNearest benchmarks k-nearest neighbor search
+func BenchmarkKNearest(b *testing.B) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 10000, Height: 10000},
+			Capacity: 10,
+		},
+	}
+
+	// Pre-populate with 5000 points
+	for i := 0; i < 5000; i++ {
+		x := float64(i%100) * 100
+		y := float64((i/100)%50) * 200
+		qt.Insert(Point{X: x, Y: y, Data: nil})
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		targetX := float64(i%50) * 200
+		targetY := float64((i/50)%50) * 200
+		target := Point{X: targetX, Y: targetY, Data: nil}
+		_ = qt.KNearest(target, 10)
+	}
+}
+
+// BenchmarkKNearestSmallK benchmarks k-nearest with small k value
+func BenchmarkKNearestSmallK(b *testing.B) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 10000, Height: 10000},
+			Capacity: 10,
+		},
+	}
+
+	// Pre-populate
+	for i := 0; i < 1000; i++ {
+		x := float64(i%50) * 200
+		y := float64((i/50)%20) * 500
+		qt.Insert(Point{X: x, Y: y, Data: nil})
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		targetX := float64(i%25) * 400
+		targetY := float64((i/25)%20) * 500
+		target := Point{X: targetX, Y: targetY, Data: nil}
+		_ = qt.KNearest(target, 3)
+	}
+}
