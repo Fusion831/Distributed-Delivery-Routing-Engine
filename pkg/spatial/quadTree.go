@@ -147,6 +147,15 @@ func (n *Node) RemoveNode(point Point) bool {
 
 }
 
+func (qt *QuadTree) Update(oldPoint, newPoint Point) bool {
+	qt.Lock.Lock()
+	defer qt.Lock.Unlock()
+	if qt.Root.RemoveNode(oldPoint) {
+		return qt.Root.InsertNode(newPoint)
+	}
+	return false //Old point not found??This should not happen, It is here for Function definition
+}
+
 func (qt *QuadTree) Insert(point Point) bool {
 	/*
 		Public Accessible API for Inserting New Points into the QuadTree,
