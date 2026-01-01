@@ -685,8 +685,497 @@ func BenchmarkInsert(b *testing.B) {
 	}
 }
 
-// BenchmarkSearch benchmarks search performance
-func BenchmarkSearch(b *testing.B) {
+// TestQuadTreeRemoveBasic tests removing a single point
+func TestQuadTreeRemoveBasic(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	point := Point{X: 50, Y: 50, Data: "test"}
+	qt.Insert(point)
+
+	if len(qt.Root.Points) != 1 {
+		t.Errorf("Expected 1 point after insert, got %d", len(qt.Root.Points))
+	}
+
+	// Remove the point
+	result := qt.Remove(point)
+
+	if !result {
+		t.Error("Remove() failed to remove existing point")
+	}
+
+	if len(qt.Root.Points) != 0 {
+		t.Errorf("Expected 0 points after removal, got %d", len(qt.Root.Points))
+	}
+}
+
+// TestQuadTreeRemoveNonexistent tests removing a point that doesn't exist
+func TestQuadTreeRemoveNonexistent(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	point := Point{X: 50, Y: 50, Data: "test"}
+	result := qt.Remove(point)
+
+	if result {
+		t.Error("Remove() should fail for non-existent point")
+	}
+}
+
+// TestQuadTreeRemoveMultiple tests removing multiple points from a leaf node
+func TestQuadTreeRemoveMultiple(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	points := []Point{
+		{X: 10, Y: 10, Data: "p1"},
+		{X: 20, Y: 20, Data: "p2"},
+		{X: 30, Y: 30, Data: "p3"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Remove first point
+	if !qt.Remove(points[0]) {
+		t.Error("Failed to remove first point")
+	}
+
+	if len(qt.Root.Points) != 2 {
+		t.Errorf("Expected 2 points after removal, got %d", len(qt.Root.Points))
+	}
+
+	// Remove second point
+	if !qt.Remove(points[1]) {
+		t.Error("Failed to remove second point")
+	}
+
+	if len(qt.Root.Points) != 1 {
+		t.Errorf("Expected 1 point after removal, got %d", len(qt.Root.Points))
+	}
+}
+
+// TestQuadTreeRemoveAfterSubdivision tests removing points after tree subdivision
+func TestQuadTreeRemoveAfterSubdivision(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 2,
+		},
+	}
+
+	points := []Point{
+		{X: 10, Y: 10, Data: "NW"},
+		{X: 80, Y: 10, Data: "NE"},
+		{X: 10, Y: 80, Data: "SW"},
+		{X: 80, Y: 80, Data: "SE"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Verify tree was subdivided
+	if qt.Root.Children[0] == nil {
+		t.Fatal("Tree should be subdivided")
+	}
+
+	// Remove a point from a child node
+	if !qt.Remove(points[0]) {
+		t.Error("Failed to remove point from subdivided tree")
+	}
+
+	// Verify point was removed
+	searchArea := Bounds{X: 0, Y: 0, Width: 50, Height: 50}
+	results := qt.Search(searchArea)
+
+	if len(results) != 0 {
+		t.Errorf("Expected 0 results in NW quadrant, got %d", len(results))
+	}
+}
+
+// TestQuadTreeRemoveOutOfBounds tests removing an out-of-bounds point
+func TestQuadTreeRemoveOutOfBounds(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	qt.Insert(Point{X: 50, Y: 50, Data: "test"})
+
+	// Try to remove a point outside bounds
+	outOfBounds := Point{X: 150, Y: 150, Data: "test"}
+	result := qt.Remove(outOfBounds)
+
+	if result {
+		t.Error("Remove() should fail for out-of-bounds point")
+	}
+}
+
+// TestQuadTreeUpdateBasic tests updating a point's coordinates
+func TestQuadTreeUpdateBasic(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	oldPoint := Point{X: 50, Y: 50, Data: "test"}
+	qt.Insert(oldPoint)
+
+	if len(qt.Root.Points) != 1 {
+		t.Fatal("Insert failed")
+	}
+
+	// Update the point to new coordinates
+	newPoint := Point{X: 75, Y: 75, Data: "updated"}
+	result := qt.Update(oldPoint, newPoint)
+
+	if !result {
+		t.Error("Update() failed")
+	}
+
+	// Verify old point is gone
+	searchOld := Bounds{X: 45, Y: 45, Width: 10, Height: 10}
+	resultsOld := qt.Search(searchOld)
+
+	if len(resultsOld) != 0 {
+		t.Error("Old point should not exist after update")
+	}
+
+	// Verify new point exists
+	searchNew := Bounds{X: 70, Y: 70, Width: 10, Height: 10}
+	resultsNew := qt.Search(searchNew)
+
+	if len(resultsNew) != 1 {
+		t.Errorf("Expected 1 result at new coordinates, got %d", len(resultsNew))
+	}
+
+	if resultsNew[0].Data != "updated" {
+		t.Error("Updated point should have new data")
+	}
+}
+
+// TestQuadTreeUpdateNonexistentPoint tests updating a point that doesn't exist
+func TestQuadTreeUpdateNonexistentPoint(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	oldPoint := Point{X: 50, Y: 50, Data: "test"}
+	newPoint := Point{X: 75, Y: 75, Data: "updated"}
+
+	result := qt.Update(oldPoint, newPoint)
+
+	if result {
+		t.Error("Update() should fail for non-existent point")
+	}
+
+	// Verify new point was not inserted
+	searchArea := Bounds{X: 0, Y: 0, Width: 100, Height: 100}
+	results := qt.Search(searchArea)
+
+	if len(results) != 0 {
+		t.Errorf("Expected no results, got %d", len(results))
+	}
+}
+
+// TestQuadTreeUpdateToOutOfBounds tests updating a point outside the bounds
+func TestQuadTreeUpdateToOutOfBounds(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	oldPoint := Point{X: 50, Y: 50, Data: "test"}
+	qt.Insert(oldPoint)
+
+	// Try to update to out-of-bounds coordinates
+	outOfBoundsPoint := Point{X: 150, Y: 150, Data: "out"}
+	result := qt.Update(oldPoint, outOfBoundsPoint)
+
+	if result {
+		t.Error("Update() should fail when moving point out of bounds")
+	}
+
+	// Old point should still exist
+	searchArea := Bounds{X: 0, Y: 0, Width: 100, Height: 100}
+	results := qt.Search(searchArea)
+
+	if len(results) != 1 {
+		t.Error("Original point should still exist after failed update")
+	}
+}
+
+// TestQuadTreeUpdateMultiplePoints tests updating multiple points sequentially
+func TestQuadTreeUpdateMultiplePoints(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	points := []Point{
+		{X: 10, Y: 10, Data: "p1"},
+		{X: 20, Y: 20, Data: "p2"},
+		{X: 30, Y: 30, Data: "p3"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Update multiple points
+	newPoints := []Point{
+		{X: 15, Y: 15, Data: "p1_updated"},
+		{X: 25, Y: 25, Data: "p2_updated"},
+		{X: 35, Y: 35, Data: "p3_updated"},
+	}
+
+	for i, newP := range newPoints {
+		if !qt.Update(points[i], newP) {
+			t.Errorf("Failed to update point %d", i)
+		}
+	}
+
+	// Verify all updates
+	searchArea := Bounds{X: 0, Y: 0, Width: 100, Height: 100}
+	results := qt.Search(searchArea)
+
+	if len(results) != 3 {
+		t.Errorf("Expected 3 results after updates, got %d", len(results))
+	}
+}
+
+// TestQuadTreeUpdateAfterSubdivision tests updating points after tree subdivision
+func TestQuadTreeUpdateAfterSubdivision(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 2,
+		},
+	}
+
+	points := []Point{
+		{X: 10, Y: 10, Data: "NW"},
+		{X: 80, Y: 10, Data: "NE"},
+		{X: 10, Y: 80, Data: "SW"},
+		{X: 80, Y: 80, Data: "SE"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Verify tree was subdivided
+	if qt.Root.Children[0] == nil {
+		t.Fatal("Tree should be subdivided")
+	}
+
+	// Update a point to different quadrant
+	oldPoint := points[0] // In NW
+	newPoint := Point{X: 80, Y: 80, Data: "moved_to_SE"}
+
+	if !qt.Update(oldPoint, newPoint) {
+		t.Error("Update() should succeed")
+	}
+
+	// Verify old quadrant has one less point
+	nwArea := Bounds{X: 0, Y: 0, Width: 50, Height: 50}
+	nwResults := qt.Search(nwArea)
+
+	if len(nwResults) != 0 {
+		t.Errorf("NW quadrant should have 0 points, got %d", len(nwResults))
+	}
+
+	// Verify new quadrant has the updated point
+	seArea := Bounds{X: 50, Y: 50, Width: 50, Height: 50}
+	seResults := qt.Search(seArea)
+
+	if len(seResults) != 2 {
+		t.Errorf("SE quadrant should have 2 points, got %d", len(seResults))
+	}
+}
+
+// TestQuadTreeRemoveFromDifferentQuadrants tests removing points from various quadrants
+func TestQuadTreeRemoveFromDifferentQuadrants(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 2,
+		},
+	}
+
+	points := []Point{
+		{X: 10, Y: 10, Data: "NW"},
+		{X: 80, Y: 10, Data: "NE"},
+		{X: 10, Y: 80, Data: "SW"},
+		{X: 80, Y: 80, Data: "SE"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Remove from each quadrant
+	for i, p := range points {
+		if !qt.Remove(p) {
+			t.Errorf("Failed to remove point %d", i)
+		}
+	}
+
+	// Verify all points are removed
+	searchArea := Bounds{X: 0, Y: 0, Width: 100, Height: 100}
+	results := qt.Search(searchArea)
+
+	if len(results) != 0 {
+		t.Errorf("Expected all points removed, got %d", len(results))
+	}
+}
+
+// TestQuadTreeRemoveSameName tests removing points with same data value
+func TestQuadTreeRemoveSameName(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	// Insert points with same data but different coordinates
+	points := []Point{
+		{X: 10, Y: 10, Data: "duplicate"},
+		{X: 20, Y: 20, Data: "duplicate"},
+		{X: 30, Y: 30, Data: "unique"},
+	}
+
+	for _, p := range points {
+		qt.Insert(p)
+	}
+
+	// Remove should match by coordinates, not data
+	if !qt.Remove(points[0]) {
+		t.Error("Failed to remove first point")
+	}
+
+	searchArea := Bounds{X: 0, Y: 0, Width: 100, Height: 100}
+	results := qt.Search(searchArea)
+
+	if len(results) != 2 {
+		t.Errorf("Expected 2 results after removal, got %d", len(results))
+	}
+}
+
+// TestQuadTreeUpdatePreservesDataInSearchArea tests update preserves point data
+func TestQuadTreeUpdatePreservesDataInSearchArea(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 100, Height: 100},
+			Capacity: 4,
+		},
+	}
+
+	oldPoint := Point{X: 10, Y: 10, Data: "original_data"}
+	qt.Insert(oldPoint)
+
+	newPoint := Point{X: 30, Y: 30, Data: "new_data"}
+	qt.Update(oldPoint, newPoint)
+
+	// Search at old location
+	oldSearchArea := Bounds{X: 5, Y: 5, Width: 10, Height: 10}
+	oldResults := qt.Search(oldSearchArea)
+
+	if len(oldResults) != 0 {
+		t.Error("Old location should have no points")
+	}
+
+	// Search at new location
+	newSearchArea := Bounds{X: 25, Y: 25, Width: 10, Height: 10}
+	newResults := qt.Search(newSearchArea)
+
+	if len(newResults) != 1 {
+		t.Error("New location should have the point")
+	}
+
+	if newResults[0].Data != "new_data" {
+		t.Error("Point should have updated data")
+	}
+}
+
+// TestQuadTreeConcurrentUpdateRemove tests concurrent update and remove operations
+func TestQuadTreeConcurrentUpdateRemove(t *testing.T) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 1000, Height: 1000},
+			Capacity: 10,
+		},
+	}
+
+	// Pre-populate
+	for i := 0; i < 100; i++ {
+		x := float64(i%10) * 100
+		y := float64((i/10)%10) * 100
+		qt.Insert(Point{X: x, Y: y, Data: fmt.Sprintf("p%d", i)})
+	}
+
+	var wg sync.WaitGroup
+	numGoroutines := 10
+
+	// Half update, half remove
+	for g := 0; g < numGoroutines; g++ {
+		wg.Add(1)
+		go func(goroutineID int) {
+			defer wg.Done()
+			if goroutineID%2 == 0 {
+				// Update operations
+				for i := 0; i < 10; i++ {
+					oldX := float64((goroutineID*10 + i) % 100)
+					oldY := float64((goroutineID*10 + i) / 100)
+					oldP := Point{X: oldX, Y: oldY, Data: fmt.Sprintf("p%d", goroutineID*10+i)}
+
+					newX := oldX + 500
+					newY := oldY + 500
+					newP := Point{X: newX, Y: newY, Data: fmt.Sprintf("updated_%d", goroutineID)}
+					qt.Update(oldP, newP)
+				}
+			} else {
+				// Remove operations
+				for i := 0; i < 10; i++ {
+					x := float64((goroutineID*10 + i) % 100)
+					y := float64((goroutineID*10 + i) / 100)
+					qt.Remove(Point{X: x, Y: y, Data: fmt.Sprintf("p%d", goroutineID*10+i)})
+				}
+			}
+		}(g)
+	}
+
+	wg.Wait()
+}
+
+// BenchmarkRemove benchmarks removal performance
+func BenchmarkRemove(b *testing.B) {
 	qt := &QuadTree{
 		Root: &Node{
 			Bounds:   Bounds{X: 0, Y: 0, Width: 10000, Height: 10000},
@@ -695,16 +1184,45 @@ func BenchmarkSearch(b *testing.B) {
 	}
 
 	// Pre-populate
-	for i := 0; i < 1000; i++ {
+	points := make([]Point, b.N)
+	for i := 0; i < b.N; i++ {
 		x := float64(i%100) * 100
 		y := float64((i/100)%100) * 100
-		qt.Insert(Point{X: x, Y: y, Data: nil})
+		p := Point{X: x, Y: y, Data: nil}
+		points[i] = p
+		qt.Insert(p)
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		searchArea := Bounds{X: float64(i%50) * 100, Y: float64((i/50)%50) * 100, Width: 500, Height: 500}
-		_ = qt.Search(searchArea)
+		qt.Remove(points[i])
+	}
+}
+
+// BenchmarkUpdate benchmarks update performance
+func BenchmarkUpdate(b *testing.B) {
+	qt := &QuadTree{
+		Root: &Node{
+			Bounds:   Bounds{X: 0, Y: 0, Width: 10000, Height: 10000},
+			Capacity: 10,
+		},
+	}
+
+	// Pre-populate
+	points := make([]Point, b.N)
+	for i := 0; i < b.N; i++ {
+		x := float64(i%100) * 100
+		y := float64((i/100)%100) * 100
+		p := Point{X: x, Y: y, Data: nil}
+		points[i] = p
+		qt.Insert(p)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		newX := float64((i+5000)%100) * 100
+		newY := float64(((i+5000)/100)%100) * 100
+		qt.Update(points[i], Point{X: newX, Y: newY, Data: nil})
 	}
 }
 

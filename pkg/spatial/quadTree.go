@@ -150,10 +150,25 @@ func (n *Node) RemoveNode(point Point) bool {
 func (qt *QuadTree) Update(oldPoint, newPoint Point) bool {
 	qt.Lock.Lock()
 	defer qt.Lock.Unlock()
-	if qt.Root.RemoveNode(oldPoint) {
-		return qt.Root.InsertNode(newPoint)
+	// Validate new point is within bounds before removing old point
+	if !qt.Root.Bounds.Contains(newPoint) {
+		return false
 	}
-	return false //Old point not found??This should not happen, It is here for Function definition
+	if qt.Root.RemoveNode(oldPoint) {
+		if qt.Root.InsertNode(newPoint) {
+			return true
+		}
+		//re-insert old point if new insert failed
+		qt.Root.InsertNode(oldPoint)
+		return false
+	}
+	return false
+}
+
+func (qt *QuadTree) Remove(point Point) bool {
+	qt.Lock.Lock()
+	defer qt.Lock.Unlock()
+	return qt.Root.RemoveNode(point)
 }
 
 func (qt *QuadTree) Insert(point Point) bool {
