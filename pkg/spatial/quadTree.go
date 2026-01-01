@@ -77,7 +77,7 @@ func (n *Node) SubDivide() {
 
 }
 
-//Internal Function
+//Internal Function for Inserting a Node
 func (n *Node) InsertNode(point Point) bool {
 	if n.Bounds.Contains(point) == false {
 		return false
@@ -105,7 +105,7 @@ func (n *Node) InsertNode(point Point) bool {
 	return false
 }
 
-//Internal Function
+//Internal Function for Searching within the Tree
 func (n *Node) SearchTree(searchArea Bounds, resultPoints *[]Point) {
 
 	if n == nil || !n.Bounds.Intersects(searchArea) {
@@ -122,6 +122,29 @@ func (n *Node) SearchTree(searchArea Bounds, resultPoints *[]Point) {
 			*resultPoints = append(*resultPoints, p)
 		}
 	}
+}
+
+func (n *Node) RemoveNode(point Point) bool {
+	if !n.Bounds.Contains(point) {
+		return false
+	}
+	if n.Children[0] != nil { //If Node isnt a leaf node
+		for i := 0; i < 4; i++ {
+			if n.Children[i].RemoveNode(point) {
+				return true
+			}
+		}
+		return false
+	}
+	for i, exist := range n.Points {
+		if exist.X == point.X && exist.Y == point.Y { //Switching the found value to the last, and slicing it, as order doesnt matter
+			n.Points[i] = n.Points[len(n.Points)-1]
+			n.Points = n.Points[:len(n.Points)-1]
+			return true
+		}
+	}
+	return false
+
 }
 
 func (qt *QuadTree) Insert(point Point) bool {
