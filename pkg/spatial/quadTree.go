@@ -40,3 +40,39 @@ func (n *Node) InsertNode(point Point) bool {
 	}
 	return false
 }
+
+func (n *Node) SubDivide() {
+	x := n.Bounds.X
+	y := n.Bounds.Y
+	w := n.Bounds.X / 2
+	h := n.Bounds.Y / 2
+	//NW Child
+	n.Children[0] = &Node{
+		Bounds:   Bounds{X: x, Y: y, Width: w, Height: h},
+		Capacity: n.Capacity,
+	}
+	//NE Child
+	n.Children[1] = &Node{
+		Bounds:   Bounds{X: x + w, Y: y, Width: w, Height: h},
+		Capacity: n.Capacity,
+	}
+	//SW Child
+	n.Children[2] = &Node{
+		Bounds:   Bounds{X: x, Y: y - h, Width: w, Height: h},
+		Capacity: n.Capacity,
+	}
+	//SE Child
+	n.Children[3] = &Node{
+		Bounds:   Bounds{X: x + w, Y: y - h, Width: w, Height: h},
+		Capacity: n.Capacity,
+	}
+	for _, p := range n.Points {
+		for i := 0; i < 4; i++ {
+			if n.Children[i].InsertNode(p) {
+				break
+			}
+		}
+	}
+	n.Points = nil
+
+}
