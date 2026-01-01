@@ -44,8 +44,8 @@ func (b Bounds) Contains(point Point) bool {
 func (n *Node) SubDivide() {
 	x := n.Bounds.X
 	y := n.Bounds.Y
-	w := n.Bounds.X / 2
-	h := n.Bounds.Y / 2
+	w := n.Bounds.Width / 2
+	h := n.Bounds.Height / 2
 	//NW Child
 	n.Children[0] = &Node{
 		Bounds:   Bounds{X: x, Y: y, Width: w, Height: h},
@@ -58,12 +58,12 @@ func (n *Node) SubDivide() {
 	}
 	//SW Child
 	n.Children[2] = &Node{
-		Bounds:   Bounds{X: x, Y: y - h, Width: w, Height: h},
+		Bounds:   Bounds{X: x, Y: y + h, Width: w, Height: h},
 		Capacity: n.Capacity,
 	}
 	//SE Child
 	n.Children[3] = &Node{
-		Bounds:   Bounds{X: x + w, Y: y - h, Width: w, Height: h},
+		Bounds:   Bounds{X: x + w, Y: y + h, Width: w, Height: h},
 		Capacity: n.Capacity,
 	}
 	for _, p := range n.Points {
@@ -82,8 +82,17 @@ func (n *Node) InsertNode(point Point) bool {
 	if n.Bounds.Contains(point) == false {
 		return false
 	}
+	if n.Children[0] != nil {
+		for i := 0; i < 4; i++ {
+			if n.Children[i].InsertNode(point) {
+				return true
+			}
+		}
+		return false
+	}
 	if len(n.Points) < n.Capacity && n.Children[0] == nil {
 		n.Points = append(n.Points, point)
+		return true
 	}
 	if n.Children[0] == nil {
 		n.SubDivide()
