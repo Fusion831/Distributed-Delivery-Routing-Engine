@@ -1,13 +1,8 @@
 package model
 
-import (
-	"fmt"
-	"math"
-)
-
 type Node struct {
-	X,Y int
-	isObstacle bool
+	X, Y       int
+	IsObstacle bool
 }
 
 type Graph interface {
