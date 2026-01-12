@@ -49,8 +49,20 @@ func FindPath(ctx context.Context, g model.Graph, start, end *model.Node) ([]*mo
 		}
 
 		for _, neighbors in range g.GetNeighbors(current) {
-			
+			tentativeG := gScore[current] + 1.0 + neighbors.weight 
+			if oldG, exists := gScore[neighbors]; !exists || tentativeG < oldG {
+				cameFrom[neighbors] = current
+				gScore[neighbors] = tentativeG
+				fScore := tentativeG + ManHattanDistance(neighbors,end)
+			}else {
+				newItem := &Item{Node: neighbors, Priority: fScore}
+				heap.Push(pq, newItem)
+				openSetMap[neighbor] = newItem
+			}
+
 		}
+	}
+	return nil, errors.New("no path found")
 
 	}
 }
