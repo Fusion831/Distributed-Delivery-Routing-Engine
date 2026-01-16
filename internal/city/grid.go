@@ -1,8 +1,10 @@
 package city
 
 import (
+	"context"
 	"sync"
 
+	"github.com/Fusion831/Distributed-Delivery-Routing-Engine/pkg/algo"
 	"github.com/Fusion831/Distributed-Delivery-Routing-Engine/pkg/model"
 )
 
@@ -41,4 +43,8 @@ func (g *CityGrid) GetNeighbors(n *model.Node) []*model.Node {
 
 	}
 	return neighbors
+}
+
+func (g *CityGrid) FindPath(ctx context.Context, start, end *model.Node) ([]*model.Node, error) {
+	return algo.FindPath(ctx, g, start, end)
 }
