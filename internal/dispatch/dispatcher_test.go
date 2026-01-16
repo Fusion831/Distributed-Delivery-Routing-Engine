@@ -11,18 +11,16 @@ import (
 // MockGraph is a test implementation of model.Graph that simulates slow operations
 type MockGraph struct {
 	sleepDuration time.Duration
+	endNode       *model.Node
 }
 
 func (mg *MockGraph) GetNeighbors(n *model.Node) []*model.Node {
 	time.Sleep(mg.sleepDuration)
-	// Return a simple neighbor that leads toward typical end positions
-	neighbor := &model.Node{
-		X:          n.X + 1,
-		Y:          n.Y + 1,
-		Weight:     1,
-		IsObstacle: false,
+	// Return the end node directly so A* terminates quickly
+	if mg.endNode != nil {
+		return []*model.Node{mg.endNode}
 	}
-	return []*model.Node{neighbor}
+	return []*model.Node{}
 }
 
 func (mg *MockGraph) FindPath(ctx context.Context, start, end *model.Node) ([]*model.Node, error) {
@@ -37,8 +35,12 @@ func (mg *MockGraph) FindPath(ctx context.Context, start, end *model.Node) ([]*m
 
 // TestDispatcherBufferOverflow verifies that Submit returns "server busy" when buffer is full
 func TestDispatcherBufferOverflow(t *testing.T) {
+	// Create mock nodes
+	startNode := &model.Node{X: 0, Y: 0}
+	endNode := &model.Node{X: 10, Y: 10}
+
 	// Setup: Create Dispatcher with 1 Worker and Buffer Size = 1
-	mockGraph := &MockGraph{sleepDuration: 100 * time.Millisecond}
+	mockGraph := &MockGraph{sleepDuration: 100 * time.Millisecond, endNode: endNode}
 	dispatcher := NewDispatcher(1, 1, mockGraph)
 
 	// Start the dispatcher in a goroutine
@@ -46,10 +48,6 @@ func TestDispatcherBufferOverflow(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	// Create mock nodes
-	startNode := &model.Node{X: 0, Y: 0}
-	endNode := &model.Node{X: 10, Y: 10}
 
 	// Job A: Send first request - Worker should grab it immediately
 	jobA := &RouteRequest{
