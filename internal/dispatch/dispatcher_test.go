@@ -41,7 +41,7 @@ func TestDispatcherBufferOverflow(t *testing.T) {
 	mockGraph := &MockGraph{sleepDuration: 100 * time.Millisecond}
 	dispatcher := NewDispatcher(1, 1, mockGraph)
 
-	// Start the dispatcher
+	// Start the dispatcher in a goroutine
 	go dispatcher.Start()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -118,6 +118,6 @@ func TestDispatcherBufferOverflow(t *testing.T) {
 		t.Errorf("Job B returned error: %v", resultB.err)
 	}
 
-	// Cancel context to allow dispatcher to exit gracefully
-	cancel()
+	// Stop the dispatcher gracefully
+	dispatcher.Stop()
 }
