@@ -32,9 +32,10 @@ cmd/
 | Component | Overview | Details |
 |-----------|----------|---------|
 | **Spatial** | 2D spatial indexing with QuadTree | [docs/pkg/SPATIAL.md](docs/pkg/SPATIAL.md) |
-| **Algorithms** | A* pathfinding & utilities | *To be documented* |
-| **City Grid** | Geographic partitioning | *To be documented* |
-| **Dispatcher** | Assignment logic | *To be documented* |
+| **Algorithms** | A* pathfinding & utilities | [docs/pkg/ALGO.md](docs/pkg/ALGO.md) |
+| **Data Models** | Core graph structures | [docs/pkg/MODEL.md](docs/pkg/MODEL.md) |
+| **City Grid** | Geographic partitioning | [docs/internal/CITY.md](docs/internal/CITY.md) |
+| **Dispatcher** | Assignment logic | [docs/internal/DISPATCH.md](docs/internal/DISPATCH.md) |
 
 ## Quick Start
 

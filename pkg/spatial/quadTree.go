@@ -6,9 +6,11 @@ import (
 )
 
 type Point struct {
-	X, Y float64
-	Data interface{}
+	X, Y float64     // Coordinates
+	Data interface{} // Arbitrary data (e.g., vehicle ID, delivery ID)
 }
+
+// Bounds defines a rectangular region in 2D space.
 type Bounds struct {
 	X      float64 // Top-Left X coordinate
 	Y      float64 // Top-Left Y coordinate
@@ -17,10 +19,10 @@ type Bounds struct {
 }
 
 type Node struct {
-	Bounds   Bounds //The X,Y height, width of the box
-	Points   []Point
-	Capacity int
-	Children [4]*Node
+	Bounds   Bounds   // The X, Y, height, width of the region
+	Points   []Point  // Points stored in this node (leaf nodes only)
+	Capacity int      // Maximum points before subdivision
+	Children [4]*Node // Four child nodes (nil until subdivided)
 }
 
 type QuadTree struct {
@@ -181,21 +183,13 @@ func (qt *QuadTree) Remove(point Point) bool {
 }
 
 func (qt *QuadTree) Insert(point Point) bool {
-	/*
-		Public Accessible API for Inserting New Points into the QuadTree,
-		(Much Less Contention in Comparison to the Read Operations)
-	*/
 	qt.Lock.Lock()
 	defer qt.Lock.Unlock()
 	res := qt.Root.InsertNode(point)
 	return res
-
 }
 
 func (qt *QuadTree) Search(area Bounds) []Point {
-	/*
-		Public Accessible API to search within the QuadTree
-	*/
 	qt.Lock.RLock()
 	defer qt.Lock.RUnlock()
 	results := make([]Point, 0)
