@@ -1,3 +1,6 @@
+// Package algo provides graph-based pathfinding and routing algorithms.
+// It includes A* algorithm implementation combined with binary heap for efficient pathfinding,
+// and heuristic-based route optimization for real-time dispatch operations.
 package algo
 
 import (
@@ -9,13 +12,23 @@ import (
 	"github.com/Fusion831/Distributed-Delivery-Routing-Engine/pkg/model"
 )
 
-//Heap Functions I can use -> len,less,swap,push,pop,update
-
+// ManHattanDistance computes the Manhattan distance between two grid nodes.
+// This serves as an admissible heuristic for the A* algorithm, ensuring optimal pathfinding.
 func ManHattanDistance(a, b *model.Node) float64 {
-	//Will serve as the heuristic for the A* algorithm
 	return math.Abs(float64(a.X-b.X) + float64(a.Y-b.Y))
 }
 
+// FindPath uses the A* algorithm to find the shortest path between two nodes on a graph.
+// It combines g-score (cost from start) with h-score (heuristic distance to end) for efficient pathfinding.
+// The function respects context cancellation for early termination of long-running searches.
+//
+// Parameters:
+//   - ctx: context for cancellation support
+//   - g: the graph to search on
+//   - start: the starting node
+//   - end: the destination node
+//
+// Returns the path as a slice of nodes from start to end, or an error if no path exists.
 func FindPath(ctx context.Context, g model.Graph, start, end *model.Node) ([]*model.Node, error) {
 	pq := &PriorityQueue{}
 	heap.Init(pq)
