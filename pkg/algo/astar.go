@@ -30,6 +30,11 @@ func ManHattanDistance(a, b *model.Node) float64 {
 //
 // Returns the path as a slice of nodes from start to end, or an error if no path exists.
 func FindPath(ctx context.Context, g model.Graph, start, end *model.Node) ([]*model.Node, error) {
+	// Special case: start is already the destination
+	if start == end {
+		return []*model.Node{start}, nil
+	}
+
 	pq := &PriorityQueue{}
 	heap.Init(pq)
 
