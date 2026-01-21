@@ -12,7 +12,7 @@ import (
 // Contains either the computed path or an error if pathfinding failed.
 type RouteResult struct {
 	PathResult []*model.Node // The sequence of nodes forming the shortest path
-	err        error         // Error if pathfinding failed (e.g., no path found)
+	Err        error         // Error if pathfinding failed (e.g., no path found)
 }
 
 // RouteRequest represents a request to find a path between two nodes.

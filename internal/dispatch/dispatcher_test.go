@@ -107,13 +107,13 @@ func TestDispatcherBufferOverflow(t *testing.T) {
 
 	// Cleanup: Read results from Job A and B to avoid goroutine leaks
 	resultA := <-jobA.ResultChan
-	if resultA.err != nil {
-		t.Errorf("Job A returned error: %v", resultA.err)
+	if resultA.Err != nil {
+		t.Errorf("Job A returned error: %v", resultA.Err)
 	}
 
 	resultB := <-jobB.ResultChan
-	if resultB.err != nil {
-		t.Errorf("Job B returned error: %v", resultB.err)
+	if resultB.Err != nil {
+		t.Errorf("Job B returned error: %v", resultB.Err)
 	}
 
 	// Stop the dispatcher gracefully

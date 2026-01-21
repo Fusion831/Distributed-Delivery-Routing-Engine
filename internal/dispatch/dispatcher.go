@@ -60,7 +60,7 @@ func (d *Dispatcher) workerLoop() {
 			// The Response: Send result into the channel
 			job.ResultChan <- &RouteResult{
 				PathResult: pathResult,
-				err:        err,
+				Err:        err,
 			}
 
 			// The Cleanup: Close channel to signal completion
