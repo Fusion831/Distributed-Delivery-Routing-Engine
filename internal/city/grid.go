@@ -21,12 +21,46 @@ type CityGrid struct {
 }
 
 // NewCityGrid creates and returns a new CityGrid with specified dimensions.
-// The grid is initialized but nodes must be populated separately.
+// The grid is initialized but nodes must be populated separately by calling InitializeNodes().
 func NewCityGrid(width, height float64) *CityGrid {
 	return &CityGrid{
 		width:  width,
 		height: height,
 	}
+}
+
+// InitializeNodes populates the grid with nodes for each coordinate.
+// Creates width × height nodes, with no obstacles. Must be called before pathfinding.
+func (g *CityGrid) InitializeNodes() {
+	g.Lock.Lock()
+	defer g.Lock.Unlock()
+
+	// Create the 2D node grid
+	g.nodes = make([][]*model.Node, int(g.width))
+	for x := 0; x < int(g.width); x++ {
+		g.nodes[x] = make([]*model.Node, int(g.height))
+		for y := 0; y < int(g.height); y++ {
+			g.nodes[x][y] = &model.Node{
+				X:          x,
+				Y:          y,
+				Weight:     1,     // Default traversal cost
+				IsObstacle: false, // No obstacles by default
+			}
+		}
+	}
+}
+
+// GetNode retrieves the node at the given coordinates.
+// Returns nil if coordinates are out of bounds.
+// Thread-safe with read lock.
+func (g *CityGrid) GetNode(x, y int) *model.Node {
+	g.Lock.RLock()
+	defer g.Lock.RUnlock()
+
+	if x < 0 || x >= len(g.nodes) || y < 0 || y >= len(g.nodes[0]) {
+		return nil
+	}
+	return g.nodes[x][y]
 }
 
 // GetNeighbors returns the valid neighboring nodes of a given node.
