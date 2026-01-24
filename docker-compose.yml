@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  
+  api:
+    # Build the Dockerfile in the current directory (.)
+    build: .
+    
+    ports:
+      - "8080:8080"
+    
+    environment:
+      - ENV=production
+    
+    restart: on-failure
