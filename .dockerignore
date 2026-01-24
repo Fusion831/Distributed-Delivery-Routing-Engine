@@ -1,0 +1,33 @@
+# Exclude git history and configuration
+.git/
+.gitignore
+
+# Exclude build artifacts and temporary files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+dist/
+build/
+bin/
+
+# Exclude locally vendored dependencies (if used)
+vendor/
+
+# Exclude editor/OS specific files
+.DS_Store
+*.log
+npm-debug.log
+.cache
+
+# Exclude environment and secret files
+.env
+.aws/
+
+# Exclude the Dockerfile and .dockerignore itself from the build context content
+# (they are still sent to the daemon for the build process, but not copied into the image)
+Dockerfile
+.dockerignore
