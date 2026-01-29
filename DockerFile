@@ -1,5 +1,5 @@
 # Lightweight Image
-FROM golang:1.23-alpine AS Builder
+FROM golang:1.25-alpine AS Builder
 
 WORKDIR /app
 COPY go.mod ./.
