@@ -42,3 +42,6 @@ When I run this command, the message "Hello, NATS!" is sent to the "updates" sub
 
 How I can use this in the current project:
 Currently, This project is receving and listening on the same port synchronously, Which makes it tight for coupling, and not something that is good for a Routing sysem which can have even 10,000 drivers asking for a route. Having more ports is also not a good solution, as it can be hard to manage as well as expensive. We can change the project pattern to instead have a central NATS Server which can listen for the requests from the API, and then which can be utilized by the current worker pools to process the requests, which then get sent to a temporary inbox, which can then be given back to the Client through websockets or any other method(I dont know how to do this yet, but I will learn it later).
+
+
+##Pattern 2: Queue Groups
