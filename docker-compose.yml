@@ -16,7 +16,7 @@ services:
     restart: on-failure
   nats:
     image: nats:latest
-    command: "-js sd /data" #js-> jetstream, sd -> storage directory
+    command: "-js -store_dir /data" #js-> jetstream, -store_dir -> storage directory
     ports:
       - "4222:4222" #client
       - "8222:8222" #dashboard
