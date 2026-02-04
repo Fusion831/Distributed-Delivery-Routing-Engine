@@ -5,6 +5,7 @@ services:
   api:
     # Build the Dockerfile in the current directory (.)
     build: .
+    depends_on: [nats]
     
     ports:
       - "8080:8080"
@@ -13,3 +14,18 @@ services:
       - ENV=production
     
     restart: on-failure
+  nats:
+    image: nats:latest
+    command: "-js sd /data" #js-> jetstream, sd -> storage directory
+    ports:
+      - "4222:4222" #client
+      - "8222:8222" #dashboard
+  
+  #CLI Tool
+  toolbox:
+    image: natsio/nats-box:latest
+    command: sleep infinity
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
