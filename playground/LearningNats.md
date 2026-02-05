@@ -1,11 +1,58 @@
 This is just my own notes for how I am working through learning it, and debugging issues When
 I do go wrong.
 
+
+NATS Terminology (The Study Guide)
+These are the only terms you need to research to understand "The Black Box."
+
+Subject (The Topic)
+
+Definition: A case-sensitive string acting as an address. It supports hierarchy using dots (.).
+
+Example: orders.us, orders.eu, log.error.
+
+Wildcards: * matches one token (orders.* matches orders.us), > matches everything (orders.> matches orders.us.east).
+
+Publish / Subscribe (Pub-Sub)
+
+Definition: The standard pattern. One Publisher sends a message. All active Subscribers listening to that Subject receive it.
+
+Analogy: A radio station broadcasting. If 100 radios are tuned in, 100 people hear it.
+
+Queue Group (Load Balancing)
+
+Definition: A group of subscribers that act as a single unit. NATS distributes messages to them one-by-one (Round Robin or Random).
+
+Why it matters: This is how we scale. If you have 5 Workers in a Queue Group, each message is processed by only one worker, not all 5.
+
+JetStream (Persistence)
+
+Definition: The built-in storage engine. It saves messages to disk (Stream) so they aren't lost if the consumer is offline.
+
+Key Concept: Core NATS = Fire and forget (Fast). JetStream = Guaranteed Delivery (Safe).
+
+Stream vs. Consumer
+
+Stream: The "Hard Drive" that captures messages for a subject (e.g., ORDERS).
+
+Consumer: The "View" or "Pointer" into that stream. It tracks which messages a specific worker has already read.
+
+Ack (Acknowledgement)
+
+Definition: A signal the Worker sends back to NATS saying, "I have finished processing this."
+
+AckPolicy: If NATS doesn't receive an Ack within X seconds, it assumes the Worker crashed and re-sends the message to another Worker.
+
+This is just my own notes for how I am working through learning it, and debugging issues When
+I do go wrong.
+
 Before I begin, I needed to install NATS server and the NATS CLI on Docker Network.
 
 I am currently having issues with accessing nats within that docker network from my host matchine, so I will be running the commands from within a container on that network. 
 
 The docker network does not seem to be the issue. 
+
+
 
 I had used the wrong command to run the NATS server.
 '''bash
@@ -57,15 +104,41 @@ nats sub updates --queue group1
 nats sub updates --queue group2
 '''
 
+I had done a mistake, I had used different queue group names for the two subscribers, which means they werent being load balanced, but instead both of them receiving the same messages.
+
 '''bash
-nats pub orders "Job 1"
+nats sub updates --queue group1
+'''
 
-nats pub orders "Job 2"
-
-nats pub orders "Job 3"
-
-nats pub orders "Job 4"
+'''bash
+nats pub updates "Message 1"
+nats pub updates "Message 2"
+nats pub updates "Message 3"
 '''
 When I run the publish command, the message "Hello, NATS!" will be received by only one of the subscribers in either group1 or group2, demonstrating the load balancing effect of queue groups.
 
 (All this will be executed in the container, code patterns will be shown and added later)
+
+
+## Pattern 3: JetStream
+The Theory: NATS by default is "Fire and Forget" (RAM only). If the power goes out, the messages are gone. JetStream adds a "Stream" (a log on the Hard Drive). Before NATS delivers the message to a worker, it writes it to disk.
+
+The Grand Picture: This is "Fault Tolerance." If a user submits a route request, and the entire Worker Cluster crashes simultaneously, the request is safely stored in the Stream. When the workers reboot, they ask NATS: "What did I miss?" and process the pending orders.
+
+
+'''bash
+nats stream add ORDERS --subjects "orders.*"
+'''
+This command creates a stream named "ORDERS" that captures all messages with subjects matching "orders.*" (e.g., orders.us, orders.eu).
+
+'''bash
+nats pub orders.new "Don't lose me"
+'''
+When you publish a message to "orders.new", it gets stored in the "ORDERS" stream because it matches the subject pattern.
+Now, if you have a consumer (a worker) that is subscribed to this stream, it can process the message. If the worker crashes before acknowledging the message, JetStream will automatically re-deliver it to another worker, ensuring that no messages are lost.
+
+
+'''bash
+nats stream info ORDERS
+'''
+After Restarting the container, you can check the stream info to see that the message is still there, and has not been lost due to the crash. This demonstrates the persistence feature of JetStream.
