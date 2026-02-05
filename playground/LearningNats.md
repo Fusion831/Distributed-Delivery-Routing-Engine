@@ -45,3 +45,27 @@ Currently, This project is receving and listening on the same port synchronously
 
 
 ##Pattern 2: Queue Groups
+Standard PubSub pattern generally leads to multiple workers receving the same message, which is not ideal for a worker pool. In JetStream, there is an inbuilt tool which is Queue Groups. It functions as a load balancer for messages, Messages are distributed among its members, ensuring that each message is processed by only one member of the group. 
+
+Overall Picture: We can utilize this for the project in the sense that. NATS automatically handles the distribution of messages among the workers in the pool, ensuring that each request is processed by only one worker, which can help to improve the efficiency and scalability of the system. If we have a large number of requests, we can just add more workers to the queue group.
+
+'''bash
+nats sub updates --queue group1
+'''
+
+'''bash
+nats sub updates --queue group2
+'''
+
+'''bash
+nats pub orders "Job 1"
+
+nats pub orders "Job 2"
+
+nats pub orders "Job 3"
+
+nats pub orders "Job 4"
+'''
+When I run the publish command, the message "Hello, NATS!" will be received by only one of the subscribers in either group1 or group2, demonstrating the load balancing effect of queue groups.
+
+(All this will be executed in the container, code patterns will be shown and added later)
