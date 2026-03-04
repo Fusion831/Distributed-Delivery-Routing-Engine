@@ -11,7 +11,7 @@ import (
 
 type Client struct {
 	NC *nats.Conn
-	JS *jetstream.JetStream
+	JS jetstream.Stream
 }
 
 func NewClient(url string) (*Client, error) {
@@ -29,7 +29,31 @@ func NewClient(url string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	js, _ := jetstream.New(nc)
+	js, err := jetstream.New(nc)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	s, _ := js.CreateStream(ctx, jetstream.StreamConfig{
+		Name:      "ORDERS",
+		Subjects:  []string{"ORDERS.*"},
+		Storage:   jetstream.FileStorage,
+		Retention: jetstream.WorkQueuePolicy,
+	})
+	if err != nil {
+		log.Printf("Note: Stream configuration check: %v", err)
+	} else {
+		log.Printf("Stream  initialized successfully")
+	}
+
+	return &Client{
+		NC: nc,
+		JS: s,
+	}, nil
+
+}
+
+func (c *Client) Close() {
+	if c.NC != nil {
+		c.NC.Drain()
+		c.NC.Close()
+	}
 }
