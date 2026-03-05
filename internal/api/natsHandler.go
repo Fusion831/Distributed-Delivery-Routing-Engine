@@ -8,20 +8,26 @@ import (
 
 	"github.com/Fusion831/Distributed-Delivery-Routing-Engine/internal/platform/clients"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 )
 
 type natsHandler struct {
 	msgBroker *clients.Client
 }
 
-func NewnatsHandler(nc *nats.Conn, js jetstream.Stream) *natsHandler {
+func NewnatsHandler(URL string) *natsHandler {
+	client, _ := clients.NewClient(URL)
 	return &natsHandler{
-		msgBroker: &clients.Client{NC: nc, JS: js},
+		msgBroker: client,
 	}
 }
 
-func (n *natsHandler) dumbHandle(w http.ResponseWriter, r *http.Request) {
+func (n *natsHandler) Close() {
+	if n.msgBroker != nil {
+		n.msgBroker.Close()
+	}
+}
+
+func (n *natsHandler) DumbHandle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var req RouteRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -10,7 +10,7 @@ RUN go mod download
 #COPY everything else
 COPY . .
 
-RUN go build -o server ./cmd/server/main.go
+RUN go build -o server ./cmd/server/natsMain.go
 
 #Stage-2, Multi-Stage Build
 FROM alpine:latest
@@ -19,7 +19,7 @@ WORKDIR /root/
 #Binary Code of the Running Executed Server.
 COPY --from=builder /app/server .
 
-EXPOSE 8080
+EXPOSE 8081
 
 CMD ["./server"]
 
