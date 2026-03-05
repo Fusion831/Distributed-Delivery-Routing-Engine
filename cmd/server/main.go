@@ -14,7 +14,7 @@ import (
 	"github.com/Fusion831/Distributed-Delivery-Routing-Engine/internal/dispatch"
 )
 
-func main() {
+func shitmain() {
 
 	log.Println("Initializing routing engine...")
 

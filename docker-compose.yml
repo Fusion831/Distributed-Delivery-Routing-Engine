@@ -12,6 +12,7 @@ services:
     
     environment:
       - ENV=production
+      - NATS_URL=nats://nats:4222
     
     restart: on-failure
   nats:

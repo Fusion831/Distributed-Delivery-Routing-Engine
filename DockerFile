@@ -1,9 +1,9 @@
 # Lightweight Image
-FROM golang:1.25-alpine AS Builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 COPY go.mod ./.
-#Add COPY go.sum ./. as no external dependecies, will add when configuring NATS
+COPY go.sum ./.
 RUN go mod download
 
 
