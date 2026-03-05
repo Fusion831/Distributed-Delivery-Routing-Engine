@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Fusion831/Distributed-Delivery-Routing-Engine/internal/platform/clients"
 	"github.com/nats-io/nats.go"
@@ -42,5 +43,21 @@ func (n *natsHandler) dumbHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data, _ := json.Marshal(req)
-
+	inbox := nats.NewInbox()
+	sub, err := n.msgBroker.NC.SubscribeSync(inbox)
+	defer sub.Unsubscribe()
+	msg := nats.Msg{Subject: "ORDERS.new", Reply: inbox, Data: data}
+	n.msgBroker.NC.PublishMsg(&msg)
+	responseMsg, err := sub.NextMsg(time.Second * 5)
+	if err != nil {
+		log.Printf("Request Timed Out: %v", err)
+		w.WriteHeader(http.StatusGatewayTimeout)
+		json.NewEncoder(w).Encode(RouteResponseDTO{
+			Status: "error",
+			Error:  err.Error(),
+		})
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseMsg.Data)
 }
