@@ -1,5 +1,3 @@
-// Package dispatch implements core dispatch decision-making and vehicle-to-delivery assignment logic.
-// It manages vehicle assignment, delivery routing, and real-time state updates for the routing engine.
 package dispatch
 
 import (
@@ -49,7 +47,7 @@ func (d *Dispatcher) workerLoop() {
 			if job == nil {
 				return
 			}
-			// Stale Check: Skip if context is already cancelled
+
 			if job.Ctx.Err() != nil {
 				close(job.ResultChan)
 				continue
@@ -57,20 +55,16 @@ func (d *Dispatcher) workerLoop() {
 
 			pathResult, err := algo.FindPath(job.Ctx, d.graph, job.Start, job.End)
 
-			// The Response: Send result into the channel
 			job.ResultChan <- &RouteResult{
 				PathResult: pathResult,
 				Err:        err,
 			}
 
-			// The Cleanup: Close channel to signal completion
 			close(job.ResultChan)
 		}
 	}
 }
 
-// Start begins processing route requests with the configured number of worker goroutines.
-// This is a blocking call that waits for all workers to finish.
 func (d *Dispatcher) Start() {
 	for i := 0; i < d.workers; i++ {
 		d.wg.Add(1)
@@ -91,7 +85,6 @@ func (d *Dispatcher) Submit(req *RouteRequest) error {
 	}
 }
 
-// Stop immediately terminates all workers without waiting for pending requests.
 func (d *Dispatcher) Stop() {
 	close(d.stopCh)
 }
@@ -103,7 +96,6 @@ func (d *Dispatcher) GracefulStop(ctx context.Context) error {
 
 	close(d.jobQueue)
 
-	// Wait for workers to finish or timeout
 	done := make(chan struct{})
 	go func() {
 		d.wg.Wait()
@@ -114,7 +106,7 @@ func (d *Dispatcher) GracefulStop(ctx context.Context) error {
 	case <-done:
 		return nil
 	case <-ctx.Done():
-		// Timeout exceeded, force stop
+
 		d.Stop()
 		return ctx.Err()
 	}

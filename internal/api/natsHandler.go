@@ -14,11 +14,17 @@ type natsHandler struct {
 	msgBroker *clients.Client
 }
 
-func NewnatsHandler(URL string) *natsHandler {
-	client, _ := clients.NewClient(URL)
+// NewnatsHandler creates a handler connected to the given NATS URL.
+// It returns an error when the NATS client cannot be created so callers
+// can decide whether to retry or fail fast.
+func NewnatsHandler(URL string) (*natsHandler, error) {
+	client, err := clients.NewClient(URL)
+	if err != nil {
+		return nil, err
+	}
 	return &natsHandler{
 		msgBroker: client,
-	}
+	}, nil
 }
 
 func (n *natsHandler) Close() {
@@ -29,6 +35,12 @@ func (n *natsHandler) Close() {
 
 func (n *natsHandler) DumbHandle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	if n.msgBroker == nil || n.msgBroker.NC == nil {
+		log.Printf("NATS client not initialized")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(RouteResponseDTO{Status: "error", Error: "message broker unavailable"})
+		return
+	}
 	var req RouteRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Failed to decode request body: %v", err)

@@ -21,15 +21,25 @@ func main() {
 	}
 	log.Printf("Connecting to NATS at %s", natsURL)
 
-	handler := api.NewnatsHandler(natsURL)
+	handler, err := api.NewnatsHandler(natsURL)
+	if err != nil {
+		log.Fatalf("failed to initialize nats handler: %v", err)
+	}
 	defer handler.Close()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/route", handler.DumbHandle)
 	log.Println("HTTP routes registered")
 
+	// allow port override via environment for local conflicting ports
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8081"
+	}
+	addr := ":" + port
+
 	srv := &http.Server{
-		Addr:         ":8081",
+		Addr:         addr,
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -37,7 +47,7 @@ func main() {
 	}
 
 	go func() {
-		log.Println("Server starting on http://localhost:8081")
+		log.Printf("Server starting on http://localhost:%s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
