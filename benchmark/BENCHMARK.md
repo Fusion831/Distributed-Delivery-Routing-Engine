@@ -14,9 +14,9 @@ Validate the routing engine under extreme load:
 wsl
 ```
 
-### Step 2: Navigate to Project
+### Step 2: Navigate to Benchmark Folder
 ```bash
-cd /mnt/c/Users/daksh/Projects/DistributedRoutingEngine
+cd /mnt/c/Users/daksh/Projects/DistributedRoutingEngine/benchmark
 ```
 
 ### Step 3: Set File Descriptor Limit
@@ -64,7 +64,7 @@ The `hey` command will output:
 
 ## Result Interpretation
 
-See [README.md](README.md#performance--benchmarks) for the system architecture analysis and why p99 latency may spike while p50 remains under 5ms.
+See [../README.md](../README.md#performance--benchmarks) for the system architecture analysis and why p99 latency may spike while p50 remains under 5ms.
 
 ## Troubleshooting
 

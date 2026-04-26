@@ -191,7 +191,7 @@ The answer lies in the response time breakdown:
 
 ### How to Run the Benchmark Yourself
 
-See [BENCHMARK.md](BENCHMARK.md) for step-by-step instructions to reproduce this test on your machine.
+See [benchmark/BENCHMARK.md](benchmark/BENCHMARK.md) for step-by-step instructions to reproduce this test on your machine.
 
 ### Spatial Index Example
 
